@@ -5,36 +5,46 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['plan', 'apply'],
-            description: 'Select the action to perform'
+            description: 'Select the Terraform action to perform'
+        )
+        string(
+            name: 'BRANCH',
+            defaultValue: 'main',
+            description: 'Enter Git branch name to checkout'
         )
     }
+
     stages {
         stage('Checkout') {
             steps {
-                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/shitalumare01/Terraform-Automation.git']])
-            }
-        }
-    
-        stage ("terraform init") {
-            steps {
-                sh ("terraform init -reconfigure") 
+                script {
+                    echo "Checking out branch: ${params.BRANCH}"
+                }
+                checkout scmGit(
+                    branches: [[name: "*/${params.BRANCH}"]],
+                    extensions: [],
+                    userRemoteConfigs: [[url: 'https://github.com/shitalumare01/Terraform-Automation.git']]
+                )
             }
         }
 
-        stage ("Action") {
+        stage('Terraform Init') {
+            steps {
+                sh "terraform init -reconfigure"
+            }
+        }
+
+        stage('Terraform Action') {
             steps {
                 script {
-                    switch (params.ACTION) {
-                        case 'plan':
-                            echo 'Executing Plan...'
-                            sh "terraform plan"
-                            break
-                        case 'apply':
-                            echo 'Executing Apply...'
-                            sh "terraform apply --auto-approve"
-                            break
-                        default:
-                            error 'Unknown action'
+                    if (params.ACTION == 'plan') {
+                        echo 'Executing Terraform Plan...'
+                        sh "terraform plan"
+                    } else if (params.ACTION == 'apply') {
+                        echo 'Executing Terraform Apply...'
+                        sh "terraform apply --auto-approve"
+                    } else {
+                        error 'Invalid ACTION selected'
                     }
                 }
             }
